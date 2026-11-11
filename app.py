@@ -114,6 +114,30 @@ CREATE TABLE IF NOT EXISTS quotes(
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_quotes_client ON quotes(client_name);
+CREATE TABLE IF NOT EXISTS documents(
+  id INTEGER PRIMARY KEY,
+  quote_id INTEGER,
+  doc_type TEXT NOT NULL,
+  series TEXT NOT NULL,
+  number TEXT NOT NULL,
+  issue_date TEXT NOT NULL,
+  client_name TEXT NOT NULL,
+  client_doc TEXT NOT NULL DEFAULT '',
+  client_phone TEXT NOT NULL DEFAULT '',
+  items TEXT NOT NULL,
+  discount_type TEXT NOT NULL,
+  discount_value TEXT NOT NULL,
+  igv_mode TEXT NOT NULL,
+  subtotal TEXT NOT NULL,
+  discount_amount TEXT NOT NULL,
+  base TEXT NOT NULL,
+  igv TEXT NOT NULL,
+  total TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'emitido',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE(doc_type, series, number));
+CREATE INDEX IF NOT EXISTS idx_documents_quote ON documents(quote_id);
 CREATE TABLE IF NOT EXISTS login_attempts(
   id INTEGER PRIMARY KEY, ip TEXT NOT NULL, ts REAL NOT NULL);
 """
@@ -493,7 +517,10 @@ def quotes_list():
     if status in ("enviada", "aceptada", "rechazada"):
         where.append("status=?")
         params.append(status)
-    sql = ("SELECT id, number, issue_date, client_name, client_doc, total, status, igv_mode FROM quotes"
+    sql = ("SELECT id, number, issue_date, client_name, client_doc, total, status, igv_mode, "
+           "(SELECT d.id FROM documents d WHERE d.quote_id=quotes.id AND d.status='emitido' LIMIT 1) AS doc_id, "
+           "(SELECT d.series||'-'||d.number FROM documents d WHERE d.quote_id=quotes.id AND d.status='emitido' LIMIT 1) AS doc_label "
+           "FROM quotes"
            + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT 500")
     rows = [dict(r) for r in db().execute(sql, params).fetchall()]
 
@@ -622,6 +649,181 @@ def quotes_pdf(qid):
     safe = re.sub(r"[^A-Za-z0-9 _.-]", "", row["client_name"]).strip()[:40] or "cliente"
     return send_file(io.BytesIO(pdf_bytes), mimetype="application/pdf",
                      download_name=f"{row['number']} - {safe}.pdf", as_attachment=False)
+
+
+
+# ---------------------------------------------------------------- comprobantes (registro)
+DOC_TYPES = {
+    "boleta": {"label": "Boleta de venta", "prefix": "B", "default_series": "B001"},
+    "factura": {"label": "Factura", "prefix": "F", "default_series": "F001"},
+    "recibo": {"label": "Recibo por honorarios", "prefix": "", "default_series": "E001"},
+}
+BOLETA_DNI_THRESHOLD = Decimal("700")
+
+
+def doc_out(row):
+    d = quote_out(row)
+    d["label"] = f"{row['series']}-{row['number']}"
+    d["type_label"] = DOC_TYPES[row["doc_type"]]["label"]
+    return d
+
+
+def clean_doc_ref(data, doc_type):
+    series = clean_text(data.get("series"), "Serie", 4, required=True).upper()
+    if not re.fullmatch(r"[A-Z0-9]{4}", series):
+        raise ValidationError("Serie: 4 caracteres entre letras y números (ej. B001).")
+    prefix = DOC_TYPES[doc_type]["prefix"]
+    if prefix and not series.startswith(prefix):
+        raise ValidationError(f"Serie: debe empezar con {prefix} (ej. {prefix}001).")
+    number = str(data.get("number", "")).strip()
+    if not re.fullmatch(r"[0-9]{1,8}", number) or int(number) < 1:
+        raise ValidationError("Número: hasta 8 dígitos y mayor que 0.")
+    return series, number.zfill(8)
+
+
+@app.get("/api/documents/suggest")
+@login_required
+def documents_suggest():
+    doc_type = request.args.get("doc_type", "")
+    if doc_type not in DOC_TYPES:
+        return api_error("Tipo de comprobante no válido.", 400)
+    row = db().execute("SELECT series, number FROM documents WHERE doc_type=? ORDER BY id DESC LIMIT 1",
+                       (doc_type,)).fetchone()
+    if row:
+        return jsonify({"series": row["series"], "number": str(int(row["number"]) + 1)})
+    return jsonify({"series": DOC_TYPES[doc_type]["default_series"], "number": "1"})
+
+
+@app.get("/api/documents")
+@login_required
+def documents_list():
+    where, params = [], []
+    term = request.args.get("q", "").strip()[:80]
+    if term:
+        pat = f"%{like_escape(term)}%"
+        where.append("(number LIKE ? ESCAPE '\\' OR series LIKE ? ESCAPE '\\' OR client_name LIKE ? ESCAPE '\\' "
+                     "OR client_doc LIKE ? ESCAPE '\\')")
+        params += [pat, pat, pat, pat]
+    doc_type = request.args.get("type", "")
+    if doc_type in DOC_TYPES:
+        where.append("doc_type=?")
+        params.append(doc_type)
+    status = request.args.get("status", "")
+    if status in ("emitido", "anulado"):
+        where.append("status=?")
+        params.append(status)
+    sql = ("SELECT id, quote_id, doc_type, series, number, issue_date, client_name, client_doc, total, status "
+           "FROM documents" + (" WHERE " + " AND ".join(where) if where else "") + " ORDER BY id DESC LIMIT 500")
+    rows = []
+    for r in db().execute(sql, params).fetchall():
+        d = dict(r)
+        d["label"] = f"{r['series']}-{r['number']}"
+        d["type_label"] = DOC_TYPES[r["doc_type"]]["label"]
+        rows.append(d)
+    month = date.today().strftime("%Y-%m")
+    month_total, month_count = Decimal(0), 0
+    for r in db().execute("SELECT issue_date, total FROM documents WHERE status='emitido'").fetchall():
+        if r["issue_date"].startswith(month):
+            month_total += Decimal(r["total"])
+            month_count += 1
+    return jsonify({"documents": rows, "stats": {"month_total": str(q2(month_total)), "month_count": month_count}})
+
+
+@app.post("/api/documents")
+@login_required
+def documents_create():
+    data = request.get_json(silent=True) or {}
+    doc_type = data.get("doc_type")
+    if doc_type not in DOC_TYPES:
+        raise ValidationError("Tipo de comprobante no válido.")
+    try:
+        qid = int(data.get("quote_id"))
+    except (TypeError, ValueError):
+        raise ValidationError("Selecciona una cotización.")
+    quote = fetch_quote(qid)
+    if not quote:
+        return api_error("Cotización no encontrada.", 404)
+    series, number = clean_doc_ref(data, doc_type)
+    issue_date = str(data.get("issue_date") or date.today().isoformat())
+    try:
+        date.fromisoformat(issue_date)
+    except ValueError:
+        raise ValidationError("Fecha no válida.")
+
+    doc_no = quote["client_doc"]
+    total = Decimal(quote["total"])
+    if doc_type == "factura" and len(doc_no) != 11:
+        raise ValidationError("La factura requiere el RUC (11 dígitos) del cliente. Edita la cotización.")
+    if doc_type == "boleta" and total >= BOLETA_DNI_THRESHOLD and not doc_no:
+        raise ValidationError("Las boletas desde S/ 700 requieren DNI o RUC del cliente. Edita la cotización.")
+    if total <= 0:
+        raise ValidationError("El total de la cotización debe ser mayor que 0.")
+
+    conn = db()
+    prev = conn.execute("SELECT series, number FROM documents WHERE quote_id=? AND status='emitido'", (qid,)).fetchone()
+    if prev:
+        return api_error(f"Esta cotización ya tiene el comprobante {prev['series']}-{prev['number']}. "
+                         "Anúlalo primero si necesitas registrar otro.", 409)
+    ts = now_iso()
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        cur = conn.execute(
+            "INSERT INTO documents(quote_id, doc_type, series, number, issue_date, client_name, client_doc, "
+            "client_phone, items, discount_type, discount_value, igv_mode, subtotal, discount_amount, base, igv, "
+            "total, status, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (qid, doc_type, series, number, issue_date, quote["client_name"], quote["client_doc"],
+             quote["client_phone"], quote["items"], quote["discount_type"], quote["discount_value"],
+             quote["igv_mode"], quote["subtotal"], quote["discount_amount"], quote["base"], quote["igv"],
+             quote["total"], "emitido", ts, ts))
+        conn.execute("UPDATE quotes SET status='aceptada', updated_at=? WHERE id=?", (ts, qid))
+        conn.execute("COMMIT")
+    except sqlite3.IntegrityError:
+        conn.execute("ROLLBACK")
+        return api_error(f"Ya registraste {series}-{number} como {DOC_TYPES[doc_type]['label'].lower()}.", 409)
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    row = conn.execute("SELECT * FROM documents WHERE id=?", (cur.lastrowid,)).fetchone()
+    return jsonify(doc_out(row)), 201
+
+
+@app.get("/api/documents/<int:did>")
+@login_required
+def documents_get(did):
+    row = db().execute("SELECT * FROM documents WHERE id=?", (did,)).fetchone()
+    if not row:
+        return api_error("Comprobante no encontrado.", 404)
+    return jsonify(doc_out(row))
+
+
+@app.patch("/api/documents/<int:did>/void")
+@login_required
+def documents_void(did):
+    row = db().execute("SELECT * FROM documents WHERE id=?", (did,)).fetchone()
+    if not row:
+        return api_error("Comprobante no encontrado.", 404)
+    db().execute("UPDATE documents SET status='anulado', updated_at=? WHERE id=?", (now_iso(), did))
+    return jsonify({"ok": True})
+
+
+def csv_safe(value):
+    text = str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+@app.get("/api/documents/export.csv")
+@login_required
+def documents_export():
+    import csv
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["Fecha", "Tipo", "Serie", "Número", "Cliente", "DNI/RUC", "Base imponible", "IGV", "Total", "Estado"])
+    for r in db().execute("SELECT * FROM documents ORDER BY issue_date, id").fetchall():
+        w.writerow([r["issue_date"], DOC_TYPES[r["doc_type"]]["label"], r["series"], r["number"],
+                    csv_safe(r["client_name"]), r["client_doc"], r["base"], r["igv"], r["total"], r["status"]])
+    payload = ("\ufeff" + out.getvalue()).encode("utf-8")
+    return send_file(io.BytesIO(payload), mimetype="text/csv", as_attachment=True,
+                     download_name=f"comprobantes-{date.today().isoformat()}.csv")
 
 
 @app.get("/api/backup")

@@ -38,3 +38,10 @@ Luego entra a **Ajustes** y completa teléfono, correo, RUC y datos de pago.
 
 ## Respaldos
 Ajustes → **Descargar respaldo** (copia completa de la base). Hazlo cada semana.
+
+## Comprobantes (boleta / factura / recibo por honorarios)
+Es un **registro interno**, no emite comprobantes válidos. Se emite en SUNAT y aquí se registra la misma serie y número.
+- Cotizaciones → ícono de comprobante en la fila. Ya existe una tabla `documents`; se crea sola al arrancar y no toca tus datos.
+- Reglas: serie de 4 caracteres (boleta empieza con B, factura con F); factura exige RUC de 11 dígitos; boleta desde S/ 700 exige DNI o RUC.
+- No se pueden borrar, solo **anular** (y anular también en SUNAT).
+- Comprobantes → **Exportar CSV** para tu contador.
