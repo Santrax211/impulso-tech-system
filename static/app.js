@@ -89,15 +89,15 @@
     }
     let res;
     try { res = await fetch('/api' + path, opts); }
-    catch { throw new ApiError('Sin conexiÃ³n con el servidor.', 0); }
+    catch { throw new ApiError('Sin conexión con el servidor.', 0); }
     let data = null;
     try { data = await res.json(); } catch { /* sin cuerpo */ }
-    if (res.status === 401 && path !== '/login') { showLogin(); throw new ApiError('Tu sesiÃ³n expirÃ³. Ingresa de nuevo.', 401); }
-    if (!res.ok) throw new ApiError((data && data.error) || 'OcurriÃ³ un error inesperado.', res.status);
+    if (res.status === 401 && path !== '/login') { showLogin(); throw new ApiError('Tu sesión expiró. Ingresa de nuevo.', 401); }
+    if (!res.ok) throw new ApiError((data && data.error) || 'Ocurrió un error inesperado.', res.status);
     return data;
   }
 
-  /* ------------------------------------------------------------ sesiÃ³n */
+  /* ------------------------------------------------------------ sesión */
   function showLogin() {
     $('#app').hidden = true;
     $('#login').hidden = false;
@@ -159,7 +159,7 @@
   /* ------------------------------------------------------------ historial */
   async function viewList() {
     const view = $('#view');
-    const search = h('input', { type: 'search', placeholder: 'Buscar por cliente, DNI/RUC o nÃºmero', 'aria-label': 'Buscar cotizaciones' });
+    const search = h('input', { type: 'search', placeholder: 'Buscar por cliente, DNI/RUC o número', 'aria-label': 'Buscar cotizaciones' });
     const statusSel = h('select', { 'aria-label': 'Filtrar por estado' },
       h('option', { value: '' }, 'Todos los estados'),
       h('option', { value: 'enviada' }, 'Enviadas'),
@@ -171,7 +171,7 @@
     view.replaceChildren(
       h('div', { class: 'view-head' },
         h('h1', {}, 'Cotizaciones'),
-        h('a', { class: 'btn primary', href: '#/nueva' }, icon('plus'), 'Nueva cotizaciÃ³n')),
+        h('a', { class: 'btn primary', href: '#/nueva' }, icon('plus'), 'Nueva cotización')),
       figures,
       h('div', { class: 'filters' }, search, statusSel),
       listBox);
@@ -186,13 +186,13 @@
       if (!data.quotes.length) {
         const filtering = search.value || statusSel.value;
         listBox.replaceChildren(h('div', { class: 'qlist empty' },
-          h('h2', {}, filtering ? 'Sin resultados' : 'AÃºn no hay cotizaciones'),
-          h('p', {}, filtering ? 'Prueba con otro nombre, nÃºmero o estado.' : 'Crea la primera para verla aquÃ­.'),
-          filtering ? null : h('a', { class: 'btn primary', href: '#/nueva' }, 'Crear cotizaciÃ³n')));
+          h('h2', {}, filtering ? 'Sin resultados' : 'Aún no hay cotizaciones'),
+          h('p', {}, filtering ? 'Prueba con otro nombre, número o estado.' : 'Crea la primera para verla aquí.'),
+          filtering ? null : h('a', { class: 'btn primary', href: '#/nueva' }, 'Crear cotización')));
         return;
       }
       listBox.replaceChildren(h('div', { class: 'qlist' },
-        h('div', { class: 'qhead' }, h('span', {}, 'NÃºmero'), h('span', {}, 'Cliente'), h('span', {}, 'Total'), h('span', {}, 'Estado'), h('span', {}, 'Acciones')),
+        h('div', { class: 'qhead' }, h('span', {}, 'Número'), h('span', {}, 'Cliente'), h('span', {}, 'Total'), h('span', {}, 'Estado'), h('span', {}, 'Acciones')),
         data.quotes.map(row)));
     }
 
@@ -211,7 +211,7 @@
       });
       return h('div', { class: 'qrow' },
         h('span', { class: 'num' }, q.number),
-        h('div', { class: 'who' }, h('b', {}, q.client_name), h('small', {}, fmtDate(q.issue_date) + (q.client_doc ? ' Â· ' + q.client_doc : '') + (q.doc_label ? ' Â· ' + q.doc_label : ''))),
+        h('div', { class: 'who' }, h('b', {}, q.client_name), h('small', {}, fmtDate(q.issue_date) + (q.client_doc ? ' · ' + q.client_doc : '') + (q.doc_label ? ' · ' + q.doc_label : ''))),
         h('span', { class: 'total' }, fmtMoney(q.total)),
         h('span', { class: 'st' }, sel),
         h('div', { class: 'acts' },
@@ -230,7 +230,7 @@
           h('button', {
             class: 'icon-btn del', type: 'button', title: 'Eliminar', 'aria-label': 'Eliminar ' + q.number,
             onclick: async () => {
-              if (!(await confirmDialog(`Â¿Eliminar ${q.number} de ${q.client_name}? No se puede deshacer.`, 'Eliminar'))) return;
+              if (!(await confirmDialog(`¿Eliminar ${q.number} de ${q.client_name}? No se puede deshacer.`, 'Eliminar'))) return;
               try { await api('/quotes/' + q.id, { method: 'DELETE' }); toast(q.number + ' eliminada.'); load(); }
               catch (e) { toast(e.message, 'err'); }
             },
@@ -244,13 +244,13 @@
 
   /* ------------------------------------------------------------ editor */
   const SERVICES = [
-    ['PÃ¡gina web', 'DiseÃ±o y desarrollo de pÃ¡gina web'],
-    ['Landing page', 'DiseÃ±o de landing page'],
-    ['Logotipo', 'DiseÃ±o de logotipo'],
+    ['Página web', 'Diseño y desarrollo de página web'],
+    ['Landing page', 'Diseño de landing page'],
+    ['Logotipo', 'Diseño de logotipo'],
     ['Excel y dashboards', 'Excel avanzado y dashboard'],
     ['Plantilla Excel', 'Plantilla automatizada en Excel'],
-    ['EdiciÃ³n de documentos', 'CorrecciÃ³n y ediciÃ³n de documentos'],
-    ['Software', 'ProgramaciÃ³n y desarrollo de software'],
+    ['Edición de documentos', 'Corrección y edición de documentos'],
+    ['Software', 'Programación y desarrollo de software'],
     ['Mantenimiento web', 'Mantenimiento y soporte web (mensual)'],
   ];
   const IGV = 0.18;
@@ -290,20 +290,20 @@
     const view = $('#view');
     const bind = (el, key) => { el.addEventListener('input', () => { q[key] = el.value; recalc(); }); return el; };
 
-    const title = h('h1', {}, q.number || 'Nueva cotizaciÃ³n');
+    const title = h('h1', {}, q.number || 'Nueva cotización');
     const name = bind(h('input', { type: 'text', value: q.client_name, maxlength: 120, autocomplete: 'off', required: true }), 'client_name');
     const doc = bind(h('input', { type: 'text', value: q.client_doc, inputmode: 'numeric', maxlength: 11, autocomplete: 'off' }), 'client_doc');
     const phone = bind(h('input', { type: 'tel', value: q.client_phone, maxlength: 30, autocomplete: 'off' }), 'client_phone');
 
-    /* Ãtems */
+    /* Ítems */
     const itemsBox = h('div', { class: 'items' });
     const amountEls = [];
     function renderItems() {
       amountEls.length = 0;
       itemsBox.replaceChildren(h('div', { class: 'items-head', 'aria-hidden': 'true' },
-        h('span', {}, 'DescripciÃ³n'), h('span', {}, 'Cant.'), h('span', {}, 'Precio unit. (S/)'), h('span', {}, 'Importe'), h('span', {})));
+        h('span', {}, 'Descripción'), h('span', {}, 'Cant.'), h('span', {}, 'Precio unit. (S/)'), h('span', {}, 'Importe'), h('span', {})));
       q.items.forEach((it, idx) => {
-        const desc = h('textarea', { rows: 2, maxlength: 2000, 'aria-label': `DescripciÃ³n del servicio ${idx + 1}`, placeholder: 'QuÃ© incluye, entregables, plazoâ€¦' });
+        const desc = h('textarea', { rows: 2, maxlength: 2000, 'aria-label': `Descripción del servicio ${idx + 1}`, placeholder: 'Qué incluye, entregables, plazo…' });
         desc.value = it.desc;
         desc.addEventListener('input', () => { it.desc = desc.value; autosize(desc); });
         const qty = h('input', { class: 'num', type: 'text', inputmode: 'decimal', value: it.qty, 'aria-label': `Cantidad ${idx + 1}` });
@@ -313,7 +313,7 @@
         const out = h('output', {}, 'S/ 0.00');
         amountEls.push(out);
         itemsBox.append(h('div', { class: 'item' },
-          h('div', { class: 'f-desc' }, h('span', { class: 'mini' }, 'DescripciÃ³n'), desc),
+          h('div', { class: 'f-desc' }, h('span', { class: 'mini' }, 'Descripción'), desc),
           h('div', {}, h('span', { class: 'mini' }, 'Cantidad'), qty),
           h('div', {}, h('span', { class: 'mini' }, 'Precio unit. (S/)'), price),
           h('div', { class: 'f-amount' }, h('span', { class: 'mini' }, 'Importe'), out),
@@ -346,7 +346,7 @@
     bind(discVal, 'discount_value');
     syncDisc();
 
-    const igvOptions = [['none', 'Sin IGV'], ['add', 'MÃ¡s IGV (18%)'], ['included', 'IGV incluido']];
+    const igvOptions = [['none', 'Sin IGV'], ['add', 'Más IGV (18%)'], ['included', 'IGV incluido']];
     const igvSeg = h('div', { class: 'seg', role: 'radiogroup', 'aria-label': 'IGV' },
       igvOptions.map(([v, t]) => {
         const r = h('input', { type: 'radio', name: 'igv', value: v });
@@ -387,7 +387,7 @@
       }
       sumList.replaceChildren(...rows.map(([k, v]) => h('div', {}, h('dt', {}, k), h('dd', {}, v))));
       const days = parseInt(q.valid_days, 10);
-      sumUntil.textContent = q.issue_date && days > 0 ? `VÃ¡lida hasta el ${addDays(q.issue_date, days)}` : '';
+      sumUntil.textContent = q.issue_date && days > 0 ? `Válida hasta el ${addDays(q.issue_date, days)}` : '';
     }
 
     /* Guardado */
@@ -429,23 +429,23 @@
         h('div', { class: 'sections' },
           h('section', { class: 'section' }, h('h2', {}, 'Cliente'),
             h('div', { class: 'grid-3' },
-              h('label', { class: 'field' }, h('span', {}, 'Nombre o razÃ³n social'), name),
+              h('label', { class: 'field' }, h('span', {}, 'Nombre o razón social'), name),
               h('label', { class: 'field' }, h('span', {}, 'DNI o RUC'), doc),
-              h('label', { class: 'field' }, h('span', {}, 'TelÃ©fono'), phone))),
+              h('label', { class: 'field' }, h('span', {}, 'Teléfono'), phone))),
           h('section', { class: 'section' }, h('h2', {}, 'Servicios'),
-            h('div', { class: 'field' }, h('span', { class: 'legend' }, 'Agrega un servicio de tu catÃ¡logo'), chips),
+            h('div', { class: 'field' }, h('span', { class: 'legend' }, 'Agrega un servicio de tu catálogo'), chips),
             itemsBox,
-            h('button', { class: 'btn outline add-row', type: 'button', onclick: () => addItem('') }, icon('plus'), 'LÃ­nea en blanco')),
+            h('button', { class: 'btn outline add-row', type: 'button', onclick: () => addItem('') }, icon('plus'), 'Línea en blanco')),
           h('section', { class: 'section' }, h('h2', {}, 'Precio'),
             h('div', { class: 'field' }, h('span', { class: 'legend' }, 'IGV'), igvSeg),
             h('div', { class: 'field' }, h('span', { class: 'legend' }, 'Descuento'), h('div', { class: 'discount' }, discType, discVal))),
           h('section', { class: 'section' }, h('h2', {}, 'Condiciones'),
             h('div', { class: 'grid-3' },
               h('label', { class: 'field' }, h('span', {}, 'Fecha'), issue),
-              h('label', { class: 'field' }, h('span', {}, 'Validez (dÃ­as)'), validDays),
+              h('label', { class: 'field' }, h('span', {}, 'Validez (días)'), validDays),
               h('label', { class: 'field' }, h('span', {}, 'Estado'), status)),
             h('label', { class: 'field' }, h('span', {}, 'Condiciones de pago y entrega'), conditions))),
-        h('aside', { class: 'summary', 'aria-label': 'Resumen de la cotizaciÃ³n' },
+        h('aside', { class: 'summary', 'aria-label': 'Resumen de la cotización' },
           rise,
           h('div', {}, h('div', { class: 'lbl' }, 'Total a cotizar'), sumTotal),
           sumList, sumUntil,
@@ -458,12 +458,12 @@
 
   /* ------------------------------------------------------------ comprobantes */
   const DOC_LABELS = { boleta: 'Boleta', factura: 'Factura', recibo: 'Recibo por honorarios' };
-  const IGV_TEXT = { none: 'Sin IGV', add: 'Precios sin IGV, mÃ¡s IGV (18%)', included: 'Precios con IGV incluido' };
+  const IGV_TEXT = { none: 'Sin IGV', add: 'Precios sin IGV, más IGV (18%)', included: 'Precios con IGV incluido' };
 
   function openEmitDialog(q) {
     let type = (q.client_doc || '').length === 11 ? 'factura' : 'boleta';
     const series = h('input', { type: 'text', maxlength: 4, autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': 'Serie' });
-    const number = h('input', { type: 'text', inputmode: 'numeric', maxlength: 8, autocomplete: 'off', 'aria-label': 'NÃºmero' });
+    const number = h('input', { type: 'text', inputmode: 'numeric', maxlength: 8, autocomplete: 'off', 'aria-label': 'Número' });
     const issue = h('input', { type: 'date', value: todayISO() });
     const warn = h('p', { class: 'form-error' });
     const err = h('p', { class: 'form-error', role: 'alert' });
@@ -471,8 +471,8 @@
 
     function checkWarn() {
       const doc = q.client_doc || '';
-      if (type === 'factura' && doc.length !== 11) warn.textContent = 'La factura requiere el RUC (11 dÃ­gitos) del cliente. Edita la cotizaciÃ³n y agrÃ©galo.';
-      else if (type === 'boleta' && Number(q.total) >= 700 && !doc) warn.textContent = 'Las boletas desde S/ 700 requieren DNI o RUC del cliente. Edita la cotizaciÃ³n y agrÃ©galo.';
+      if (type === 'factura' && doc.length !== 11) warn.textContent = 'La factura requiere el RUC (11 dígitos) del cliente. Edita la cotización y agrégalo.';
+      else if (type === 'boleta' && Number(q.total) >= 700 && !doc) warn.textContent = 'Las boletas desde S/ 700 requieren DNI o RUC del cliente. Edita la cotización y agrégalo.';
       else warn.textContent = '';
     }
     async function suggest() {
@@ -488,12 +488,12 @@
 
     const form = h('form', { novalidate: true, class: 'dlg-form' },
       h('h2', {}, 'Registrar comprobante'),
-      h('p', { class: 'hint' }, `${q.number} Â· ${q.client_name} Â· ${fmtMoney(q.total)}. EmÃ­telo en SUNAT y escribe aquÃ­ la serie y el nÃºmero que te asignÃ³. Deben coincidir con SUNAT.`),
+      h('p', { class: 'hint' }, `${q.number} · ${q.client_name} · ${fmtMoney(q.total)}. Emítelo en SUNAT y escribe aquí la serie y el número que te asignó. Deben coincidir con SUNAT.`),
       h('div', { class: 'field' }, h('span', { class: 'legend' }, 'Tipo'), seg),
       h('div', { class: 'grid-2' },
         h('label', { class: 'field' }, h('span', {}, 'Serie'), series),
-        h('label', { class: 'field' }, h('span', {}, 'NÃºmero'), number)),
-      h('label', { class: 'field' }, h('span', {}, 'Fecha de emisiÃ³n'), issue),
+        h('label', { class: 'field' }, h('span', {}, 'Número'), number)),
+      h('label', { class: 'field' }, h('span', {}, 'Fecha de emisión'), issue),
       warn, err,
       h('div', { class: 'dlg-actions' },
         h('button', { class: 'btn ghost', type: 'button', onclick: () => dlg.close('no') }, 'Cancelar'), submit));
@@ -518,7 +518,7 @@
 
   async function viewDocs() {
     const view = $('#view');
-    const search = h('input', { type: 'search', placeholder: 'Buscar por nÃºmero, cliente o DNI/RUC', 'aria-label': 'Buscar comprobantes' });
+    const search = h('input', { type: 'search', placeholder: 'Buscar por número, cliente o DNI/RUC', 'aria-label': 'Buscar comprobantes' });
     const typeSel = h('select', { 'aria-label': 'Filtrar por tipo' },
       h('option', { value: '' }, 'Todos los tipos'),
       Object.entries(DOC_LABELS).map(([v, t]) => h('option', { value: v }, t)));
@@ -542,8 +542,8 @@
       if (!data.documents.length) {
         const filtering = search.value || typeSel.value || statusSel.value;
         listBox.replaceChildren(h('div', { class: 'qlist empty' },
-          h('h2', {}, filtering ? 'Sin resultados' : 'AÃºn no registras comprobantes'),
-          h('p', {}, filtering ? 'Prueba con otros filtros.' : 'Desde Cotizaciones, usa el Ã­cono de comprobante en la fila de una cotizaciÃ³n.'),
+          h('h2', {}, filtering ? 'Sin resultados' : 'Aún no registras comprobantes'),
+          h('p', {}, filtering ? 'Prueba con otros filtros.' : 'Desde Cotizaciones, usa el ícono de comprobante en la fila de una cotización.'),
           filtering ? null : h('a', { class: 'btn primary', href: '#/cotizaciones' }, 'Ir a cotizaciones')));
         return;
       }
@@ -551,7 +551,7 @@
         h('div', { class: 'qhead doc' }, h('span', {}, 'Comprobante'), h('span', {}, 'Cliente'), h('span', {}, 'Total'), h('span', {}, 'Estado'), h('span', {}, '')),
         data.documents.map((d) => h('div', { class: 'qrow doc' },
           h('a', { class: 'num doc-link', href: '#/comprobante/' + d.id }, d.label),
-          h('div', { class: 'who' }, h('b', {}, d.client_name), h('small', {}, `${d.type_label} Â· ${fmtDate(d.issue_date)}` + (d.client_doc ? ' Â· ' + d.client_doc : ''))),
+          h('div', { class: 'who' }, h('b', {}, d.client_name), h('small', {}, `${d.type_label} · ${fmtDate(d.issue_date)}` + (d.client_doc ? ' · ' + d.client_doc : ''))),
           h('span', { class: 'total' }, fmtMoney(d.total)),
           h('span', { class: 'st' }, h('span', { class: 'badge b-' + d.status }, d.status === 'emitido' ? 'Emitido' : 'Anulado')),
           h('div', { class: 'acts' }, h('a', { class: 'icon-btn', href: '#/comprobante/' + d.id, title: 'Ver detalle', 'aria-label': 'Ver ' + d.label }, icon('eye')))))));
@@ -573,17 +573,17 @@
     const view = $('#view');
     const kv = (label, value, copy = true) => h('div', { class: 'kv' },
       h('dt', {}, label),
-      h('dd', {}, value || 'â€”', copy && value ? h('button', { class: 'copy', type: 'button', 'aria-label': 'Copiar ' + label, onclick: () => copyText(String(value)) }, 'Copiar') : null));
+      h('dd', {}, value || '—', copy && value ? h('button', { class: 'copy', type: 'button', 'aria-label': 'Copiar ' + label, onclick: () => copyText(String(value)) }, 'Copiar') : null));
     const docKind = d.client_doc ? (d.client_doc.length === 11 ? 'RUC' : 'DNI') : 'Documento';
     const voided = d.status === 'anulado';
 
     const actions = h('div', { class: 'head-actions' },
       h('a', { class: 'btn ghost', href: '#/comprobantes' }, 'Volver'),
-      d.quote_id ? h('a', { class: 'btn outline', href: '#/editar/' + d.quote_id }, 'Ver cotizaciÃ³n') : null,
+      d.quote_id ? h('a', { class: 'btn outline', href: '#/editar/' + d.quote_id }, 'Ver cotización') : null,
       voided ? null : h('button', {
         class: 'btn outline danger-text', type: 'button',
         onclick: async () => {
-          if (!(await confirmDialog(`Â¿Anular ${d.label}? Esto solo marca el registro; recuerda anularlo tambiÃ©n en SUNAT.`, 'Anular'))) return;
+          if (!(await confirmDialog(`¿Anular ${d.label}? Esto solo marca el registro; recuerda anularlo también en SUNAT.`, 'Anular'))) return;
           try { await api(`/documents/${d.id}/void`, { method: 'PATCH' }); toast(d.label + ' anulado.'); viewDoc(id).catch((e) => toast(e.message, 'err')); }
           catch (e) { toast(e.message, 'err'); }
         },
@@ -591,7 +591,7 @@
 
     const itemsTable = h('div', { class: 'table-wrap' },
       h('table', { class: 'dtable' },
-        h('thead', {}, h('tr', {}, h('th', {}, 'DescripciÃ³n'), h('th', { class: 'r' }, 'Cant.'), h('th', { class: 'r' }, 'P. unit.'), h('th', { class: 'r' }, 'Importe'))),
+        h('thead', {}, h('tr', {}, h('th', {}, 'Descripción'), h('th', { class: 'r' }, 'Cant.'), h('th', { class: 'r' }, 'P. unit.'), h('th', { class: 'r' }, 'Importe'))),
         h('tbody', {}, d.items.map((it) => h('tr', {},
           h('td', { class: 'desc' }, it.desc),
           h('td', { class: 'r' }, String(parseFloat(it.qty))),
@@ -606,12 +606,12 @@
       h('div', { class: 'view-head' },
         h('div', {}, h('h1', {}, d.label), h('p', {}, d.type_label + ' ', h('span', { class: 'badge b-' + d.status }, voided ? 'Anulado' : 'Emitido'))),
         actions),
-      h('div', { class: 'notice' }, 'Este es un registro interno, no un comprobante vÃ¡lido. El documento oficial es el que emites en SUNAT con esta misma serie y nÃºmero.'),
+      h('div', { class: 'notice' }, 'Este es un registro interno, no un comprobante válido. El documento oficial es el que emites en SUNAT con esta misma serie y número.'),
       h('div', { class: 'settings' },
         h('section', { class: 'section' }, h('h2', {}, 'Comprobante'),
-          h('dl', { class: 'kvs' }, kv('Tipo', d.type_label, false), kv('Serie', d.series), kv('NÃºmero', d.number), kv('Fecha de emisiÃ³n', fmtDate(d.issue_date)), kv('Moneda', 'Soles (PEN)', false))),
+          h('dl', { class: 'kvs' }, kv('Tipo', d.type_label, false), kv('Serie', d.series), kv('Número', d.number), kv('Fecha de emisión', fmtDate(d.issue_date)), kv('Moneda', 'Soles (PEN)', false))),
         h('section', { class: 'section' }, h('h2', {}, 'Cliente'),
-          h('dl', { class: 'kvs' }, kv('Nombre o razÃ³n social', d.client_name), kv(docKind, d.client_doc), kv('TelÃ©fono', d.client_phone))),
+          h('dl', { class: 'kvs' }, kv('Nombre o razón social', d.client_name), kv(docKind, d.client_doc), kv('Teléfono', d.client_phone))),
         h('section', { class: 'section' }, h('h2', {}, 'Detalle'), itemsTable),
         h('section', { class: 'section' }, h('h2', {}, 'Totales'),
           h('dl', { class: 'kvs' },
@@ -638,15 +638,15 @@
       h('h2', {}, 'Datos del negocio'),
       h('p', { class: 'hint' }, 'Aparecen en el encabezado y el pie de cada PDF. Deja en blanco lo que no quieras mostrar.'),
       h('div', { class: 'grid-2' }, field('business_name', 'Nombre comercial', { max: 80 }), field('tagline', 'Lema', { max: 120 })),
-      h('div', { class: 'grid-2' }, field('ruc', 'RUC', { max: 20 }), field('phone', 'TelÃ©fono / WhatsApp', { max: 40 })),
+      h('div', { class: 'grid-2' }, field('ruc', 'RUC', { max: 20 }), field('phone', 'Teléfono / WhatsApp', { max: 40 })),
       h('div', { class: 'grid-2' }, field('email', 'Correo', { max: 120 }), field('web', 'Web o redes', { max: 120 })),
-      field('address', 'DirecciÃ³n', { max: 200 }),
-      field('payment_info', 'Datos de pago', { area: true, rows: 3, max: 600, hint: 'Ej.: Yape 999 999 999 Â· BCP cuenta 000-0000000-0-00 Â· CCI 000â€¦' }),
+      field('address', 'Dirección', { max: 200 }),
+      field('payment_info', 'Datos de pago', { area: true, rows: 3, max: 600, hint: 'Ej.: Yape 999 999 999 · BCP cuenta 000-0000000-0-00 · CCI 000…' }),
       h('h2', {}, 'Valores por defecto'),
       field('default_conditions', 'Condiciones de las cotizaciones nuevas', { area: true, rows: 4, max: 3000 }),
       h('div', { class: 'grid-2' },
-        field('default_valid_days', 'Validez (dÃ­as)', { type: 'number', min: 1 }),
-        field('next_number', 'PrÃ³ximo nÃºmero de cotizaciÃ³n', { type: 'number', min: 1, hint: 'Se usa en la siguiente cotizaciÃ³n que crees (COT-0001, COT-0002â€¦).' })),
+        field('default_valid_days', 'Validez (días)', { type: 'number', min: 1 }),
+        field('next_number', 'Próximo número de cotización', { type: 'number', min: 1, hint: 'Se usa en la siguiente cotización que crees (COT-0001, COT-0002…).' })),
       h('div', { class: 'save-row' }, h('button', { class: 'btn primary', type: 'submit' }, 'Guardar ajustes')));
     businessForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -661,20 +661,20 @@
     const nw = h('input', { type: 'password', autocomplete: 'new-password', minlength: 10 });
     const rep = h('input', { type: 'password', autocomplete: 'new-password' });
     const passForm = h('form', { novalidate: true },
-      h('h2', {}, 'ContraseÃ±a'),
-      h('p', { class: 'hint' }, 'MÃ­nimo 10 caracteres. Una frase larga es mÃ¡s segura que una palabra con sÃ­mbolos.'),
-      h('label', { class: 'field' }, h('span', {}, 'ContraseÃ±a actual'), cur),
+      h('h2', {}, 'Contraseña'),
+      h('p', { class: 'hint' }, 'Mínimo 10 caracteres. Una frase larga es más segura que una palabra con símbolos.'),
+      h('label', { class: 'field' }, h('span', {}, 'Contraseña actual'), cur),
       h('div', { class: 'grid-2' },
-        h('label', { class: 'field' }, h('span', {}, 'ContraseÃ±a nueva'), nw),
+        h('label', { class: 'field' }, h('span', {}, 'Contraseña nueva'), nw),
         h('label', { class: 'field' }, h('span', {}, 'Repite la nueva'), rep)),
-      h('div', { class: 'save-row' }, h('button', { class: 'btn primary', type: 'submit' }, 'Cambiar contraseÃ±a')));
+      h('div', { class: 'save-row' }, h('button', { class: 'btn primary', type: 'submit' }, 'Cambiar contraseña')));
     passForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (nw.value !== rep.value) { toast('Las contraseÃ±as nuevas no coinciden.', 'err'); return; }
+      if (nw.value !== rep.value) { toast('Las contraseñas nuevas no coinciden.', 'err'); return; }
       try {
         await api('/password', { method: 'POST', body: { current: cur.value, new: nw.value } });
         cur.value = nw.value = rep.value = '';
-        toast('ContraseÃ±a actualizada.');
+        toast('Contraseña actualizada.');
       } catch (ex) { toast(ex.message, 'err'); }
     });
 
@@ -684,7 +684,7 @@
         businessForm, passForm,
         h('section', { class: 'field' },
           h('h2', {}, 'Respaldo'),
-          h('p', { class: 'hint' }, 'Descarga una copia de toda la base de datos (clientes y cotizaciones). Hazlo con regularidad y guÃ¡rdala fuera del servidor.'),
+          h('p', { class: 'hint' }, 'Descarga una copia de toda la base de datos (clientes y cotizaciones). Hazlo con regularidad y guárdala fuera del servidor.'),
           h('div', { class: 'save-row' }, h('a', { class: 'btn outline', href: '/api/backup' }, 'Descargar respaldo')))));
   }
 
